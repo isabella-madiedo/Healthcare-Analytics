@@ -1,0 +1,991 @@
+---
+title: "The Study of Depression in Teenagers: How can mental health and lifestyle indicators support the identification of depression in teenagers?"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+# Introduction
+
+## Data Source
+The present study leerages the public dataset from the National Longitudinal Study of Adolescent to Adult Health (Add Health), 1994-2018 [Public Use] (ICPSR 21600)
+
+Harris, Kathleen Mullan, and Udry, J. Richard. National Longitudinal Study of Adolescent to Adult Health (Add Health), 1994-2018 [Public Use]. Carolina Population Center, University of North Carolina-Chapel Hill [distributor], Inter-university Consortium for Political and Social Research [distributor], 2022-08-09. https://doi.org/10.3886/ICPSR21600.v25
+
+## Background and Objective
+Background and Objective
+The objective of this report is to understand how certain mental health and life style indicators may be utilized in the identification of teenage depression cases, while controlling for gender and socioeconomic factors. For this purpose, the report leverages the data of the National Longitudinal Study of Adolescent to Adult Health, 1994-2008 (Harris and Udry, 2018). Specifically, the analysis is based on Wave I of the dataset, which was conducted in 1994-1995 and included teenagers between the ages of 12 and 21 in the United States.
+
+# Library Load
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(kableExtra)
+library(wesanderson)
+library(patchwork)
+library(caTools)
+library(splitTools)
+```
+
+# Data Load
+
+```{r}
+# Loads the questionnaire responses for wave 1
+load("C:/Users/i.madiedo.soto/OneDrive - Accenture/Documents/SoD/Healthcare Analytics/Data/21600-0001-Data.rda")
+
+# Converts the data into a data frame
+df = data.frame(da21600.0001)
+```
+
+# Variable Selection
+
+## Rationale
+To achieve the objective of this study, four variable categories are extracted from the AdHealth Wave I dataset:
+
+1. Depression: the health measure is captured from the dataset categorical question: How often during the past week did you feel depressed? On the one hand, this variable enquires directly about depression. As a result, 
+the study can focus on participants with the specified mental disorder over participants having a bad week or feeling under the weather. On the other hand, this variable refers to a recent timeframe (latest week) which aligns with the measurement of several of the accompanying mental health and life style indicators used in this report. In relation, given the self-reporting nature of the dataset, a recent timeframe allows for the most accurate recollections by the participants.
+
+2. Mental Health Indicators: the report studies two areas of mental health – (1) self-esteem/ self-consciousness via the participants’ categorical perception of their weight and intelligence, and (2) state of mind via the respondents’ categorical degree of loneliness and life enjoyment (latest week timeframe). These variables capture central topics of adolescence, such as physical appearance, overachievement, and social relationships. Thus, and in line with the literature review, providing essential resource for the identification of depression.
+
+3. Life style Indicators: this category captures – (1) exercise habits which have been found to correlate with depression, (2) school relationships, which provide an indication of social dynamics associated with depression as bullying/ peer pressure, and (3) alcohol/drugs/cigarettes consumption, which reviews substance abuse (all categorical measurements in a weekly or yearly timeframe). Going forward, areas (1) and (2) are denoted Part A and area (3) Part B of the life style indicators.
+
+4. Gender & Socioeconomic Factors: this category controls for gender, education, income, and unemployment (the two latter corresponds to the parents/ household). These factors were selected to account for confounding variables which have the potential to distort the relationship between mental health/ life style indicators and depression. For instance, exercise and physical activity may not be affordable to all respondents.
+
+## Variable Extraction
+
+```{r}
+# Selects the relevant variables (for this study) from the whole set of wave 1 in a clean format 
+data <- df %>%
+  select(H1FS6, BIO_SEX, PA55, H1GI18, PA57E, H1DA6, S63, H1SE4, H1GH28,
+         H1ED18, H1FS13, H1ED17, H1TO51, H1TO40, H1TO3, H1FS15) %>% 
+  mutate(H1FS6 = if_else(H1FS6 == '(0) (0) Never/rarely',
+                              'No',
+                              'Yes',
+                              missing = NULL),
+         BIO_SEX = if_else(BIO_SEX == '(1) (1) Male',
+                              'Male',
+                              'Female',
+                              missing = NULL),
+         H1GI18 = if_else(H1GI18 == '(0) (0) No (skip to Q.21)',
+                              'No',
+                              'Yes',
+                              missing = NULL),
+         PA57E = if_else(PA57E == '(0) (0) No',
+                              'No',
+                              'Yes',
+                              missing = NULL),
+         H1DA6 = case_when(H1DA6 == '(0) (0) Not at all' ~ '0. Not at all',
+                              H1DA6 == '(1) (1) 1 or 2 times' ~ '1. 1 or 2 times',
+                              H1DA6 == '(2) (2) 3 or 4 times' ~ '2. 3 or 4 times',
+                              H1DA6 == '(3) (3) 5 or more times' ~ '3. 5 or more times'),
+         S63 = case_when(S63 == '(0) (0) Never' ~ '0. Never',
+                              S63 == '(1) (1) 1 or 2 times' ~ '1. 1 or 2 times',
+                              S63 == '(2) (2) 3 to 5 times' ~ '2. 3 or 5 times',
+                              S63 == '(3) (3) 6 or 7 times' ~ '3. 6 or 7 times',
+                              S63 == '(4) (4) More than 7 times' ~ '4. 7 or more times'),
+         H1SE4 = case_when(H1SE4 == '(1) (1) Moderately below average' ~ '1. Moderately below average',
+                              H1SE4 == '(2) (2) Slightly below average' ~ '2. Slightly below average',
+                              H1SE4 == '(3) (3) About average' ~ '3. About average',
+                              H1SE4 == '(4) (4) Slightly above average' ~ '4. Slightly above average',
+                              H1SE4 == '(5) (5) Moderately above average' ~ '5. Moderately above average',
+                              H1SE4 == '(6) (6) Extremely above average' ~ '6. Extremely above average'),
+         H1GH28 = case_when(H1GH28 == '(1) (1) Very underweight' ~ '1. Very underweight',
+                              H1GH28 == '(2) (2) Slightly underweight' ~ '2. Slightly underweight',
+                              H1GH28 == '(3) (3) About the right weight' ~ '3. About the right weight',
+                              H1GH28 == '(4) (4) Slightly overweight' ~ '4. Slightly overweight',
+                              H1GH28 == '(5) (5) Very overweight' ~ '5. Very overweight'),
+         H1ED18 = case_when(H1ED18 == '(0) (0) Never' ~ '0. Never',
+                              H1ED18 == '(1) (1) Just a few times' ~ '1. Just a few times',
+                              H1ED18 == '(2) (2) About once a week' ~ '2. About once a week',
+                              H1ED18 == '(3) (3) Almost every day' ~ '3. Almost every day',
+                              H1ED18 == '(4) (4) Every day' ~ '4. Every day'),
+         H1FS13 = case_when(H1FS13 == '(0) (0) Never/rarely' ~ '0. Never/rarely',
+                              H1FS13 == '(1) (1) Sometimes' ~ '1. Sometimes',
+                              H1FS13 == '(2) (2) A lot of the time' ~ '2. A lot of the time',
+                              H1FS13 == '(3) (3) Most/all of the time' ~ '3. Most/all of the time'),
+         H1ED17 = case_when(H1ED17 == '(0) (0) Never' ~ '0. Never',
+                              H1ED17 == '(1) (1) Just a few times' ~ '1. Just a few times',
+                              H1ED17 == '(2) (2) About once a week' ~ '2. About once a week',
+                              H1ED17 == '(3) (3) Almost every day' ~ '3. Almost every day',
+                              H1ED17 == '(4) (4) Every day' ~ '4. Every day'),
+         H1TO51 = if_else(H1TO51 == '(0) (0) No',
+                              'No',
+                              'Yes',
+                              missing = NULL),
+         H1TO40 = if_else(H1TO40 == '(00) (0) You never tried any other type of illegal drug',
+                              '0. Never',
+                              if_else(H1TO40 == '(01) (1) 1 year' | H1TO40 == '(03) (3) 2-3 years' | H1TO40 == '(06) (6) 4-6 years' | H1TO40 == '(09) (9) 8-9 years' | H1TO40 == '(11) (11) 10-11 years',
+                                      '1. Before 12 years old',
+                                      '2. After 12 years old'),
+                              missing = NULL),
+         H1TO3 = if_else(H1TO3 == '(0) (0) No (skip to Q.5)',
+                              'No',
+                              'Yes',
+                              missing = NULL),
+         H1FS15 = case_when(H1FS15 == '(0) (0) Never/rarely' ~ '0. Never/rarely',
+                              H1FS15 == '(1) (1) Sometimes' ~ '1. Sometimes',
+                              H1FS15 == '(2) (2) A lot of the time' ~ '2. A lot of the time',
+                              H1FS15 == '(3) (3) Most/all of the time' ~ '3. Most/all of the time'))
+
+# Converts the selected variables back to factors
+data <- as.data.frame(unclass(data), stringsAsFactors = TRUE)
+
+# Renames the variables with a representative name
+data <- data %>% 
+  rename('Last Week Felt Depressed' = H1FS6, 'Gender' = BIO_SEX, 'Household Income' = PA55,
+         'Currently in School' = H1GI18, 'Unemployment Compensation' = PA57E, 'Last Week Exercise' = H1DA6,
+         'Weekly Break a Sweat' = S63, 'Intelligence Perception' = H1SE4, 'Weight Perception' = H1GH28,
+         'Last Year Trouble Other Students' = H1ED18, 'Last Week Felt Lonely' = H1FS13,
+         'Last Year Trouble HW' = H1ED17, 'Easy Access Alcohol at Home' = H1TO51,
+         'Age First Drugs' = H1TO40, 'Regular Smoker' = H1TO3, 'Last Week Enjoyed Life' = H1FS15)
+```
+
+# Exploratory Data Analysis
+
+## Summary Statistics
+
+### Mental Health
+
+```{r}
+# Calculates and formats the summary statistics for the mental health variables
+options(knitr.kable.NA = '')
+
+data %>% 
+  select('Last Week Felt Depressed', 'Last Week Felt Lonely', 'Last Week Enjoyed Life', 'Weight Perception', 'Intelligence Perception') %>% 
+  summary() %>%
+  kbl(caption = "Summary Statistics: Individual's Mental Health", col.names = c('Last Week Felt Depressed',
+                                                                       'Last Week Felt Lonely',
+                                                                       'Last Week Enjoyed Life',
+                                                                       'Weight Perception',
+                                                                       'Intelligence Perception')) %>%
+  kable_classic(full_width = T, html_font = 'Times New Roman') %>% 
+  add_header_above(c("Number of Records" = 6)) %>% 
+  footnote(general = '',
+           general_title = "Notes:",
+           alphabet = c("Last Week Depression: based on 'How often during the past week did you feel depressed?'. Where, 'Never/Rarely' responses are recorded as a 'No' and any other response (Sometimes, A lot of the time, Most/all of the time) is recorded as a 'Yes'.",
+                        "Intelligence Perception and Weight Perception correspond to the individual's own perspective at the time of the study."))
+```
+
+### Life Style
+
+```{r}
+#Calculates and formats the summary statistics for the life style variables (Part A)
+options(knitr.kable.NA = '')
+
+data %>% 
+  select('Last Week Exercise', 'Weekly Break a Sweat', 'Last Year Trouble Other Students', 'Last Year Trouble HW') %>% 
+  summary() %>%
+  kbl(caption = "Summary Statistics: Individual's Life Style (Part A)", col.names = c('Last Week Exercise',
+                                                                                'Weekly Break a Sweat',
+                                                                                'Last Year Trouble Other Students',
+                                                                                'Last Year Trouble HW')) %>%
+  kable_classic(full_width = T, html_font = 'Times New Roman') %>% 
+  add_header_above(c("Number of Records" = 5)) %>% 
+  footnote(general = '',
+           general_title = "Notes:",
+           alphabet = c("Weekly Break a Sweat: based on 'How many times in a normal week do you work, play, or exercise hard enough to make you sweat and breathe heavily?'",
+                        "Last Year Trouble Other Students: based on 'For the latest school year how often have you had trouble with getting along with other students?'",
+                        "Last Year Trouble HW: based on 'For the latest school year how often have you had trouble with getting your homework done?'"))
+```
+
+```{r}
+#Calculates and formats the summary statistics for the life style variables (Part B)
+options(knitr.kable.NA = '')
+
+data %>% 
+  select('Easy Access Alcohol at Home', 'Age First Drugs', 'Regular Smoker') %>% 
+  summary() %>%
+  kbl(caption = "Summary Statistics: Individual's Life Style (Part B)", col.names = c('Easy Access Alcohol at Home',
+                                                                                      'Age First Drugs',
+                                                                                      'Regular Smoker')) %>%
+  kable_classic(full_width = T, html_font = 'Times New Roman') %>% 
+  add_header_above(c("Number of Records" = 4)) %>% 
+  footnote(general = '',
+           general_title = "Notes:",
+           alphabet = c("Easy Access Alcohol at Home: based on 'Is alcohol easily available to you in your home?'",
+                        "Age First Drugs: based on the age the individual first tried illegal drugs other than marihuana or cocaine without a doctor's prescription. The responses are reclassified into 'before 12 years old' and 'After 12 years old' (inclusive)."))
+```
+
+```{r}
+#Calculates and formats the summary statistics for gender and socioeconomic factors
+options(knitr.kable.NA = '')
+
+data %>% 
+  select('Gender', 'Currently in School', 'Household Income', 'Unemployment Compensation') %>% 
+  summary() %>%
+  kbl(caption = "Summary Statistics: Gender and Socioeconomic Factors", col.names = c('Gender',
+                                                                                      'Currently in School',
+                                                                                      'Household Income',
+                                                                                      'Unemployment Compensation')) %>%
+  kable_classic(full_width = T, html_font = 'Times New Roman') %>% 
+  add_header_above(c("Number of Records (Discrete Varibales) & Statistics (Continous Variables)" = 5)) %>% 
+  footnote(general = '',
+           general_title = "Notes:",
+           alphabet = c("Household Income: family income before taxes (in thousands of dollars) for 1994, as reported by the parent.",
+           "Unemployment Compensation: based on a question for the parents only: 'Last month, did you or any member of your household receive: Unemployment or worker's compensations?'"))
+```
+
+## Visualisations
+
+### Health Measure and Meantal Health
+
+```{r, results='hide'}
+# Calculates and graphs depression answers by a breakdown of loneliness
+
+labels <- data %>%
+  filter(!is.na(`Last Week Felt Depressed`), !is.na(`Last Week Felt Lonely`)) %>%
+  group_by(`Last Week Felt Depressed`, `Last Week Felt Lonely`) %>%
+  summarise(count = n()) %>%
+  mutate(perc = ifelse(`Last Week Felt Depressed` == 'No', round(count/3993,2), round(count/2489,2)),
+         perc=scales::percent(perc))
+
+p <- data %>% 
+  filter(!is.na(`Last Week Felt Depressed`), !is.na(`Last Week Felt Lonely`)) %>%
+  ggplot(aes(x = `Last Week Felt Depressed`, fill = `Last Week Felt Lonely`)) +
+  geom_bar(position="stack", alpha = 1) +
+  labs(y = '') +
+  ggtitle('Depression and Loneliness in Teenagers') +
+  annotate("text", y = 2300, x = 1, label = labels$perc[1], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 400, x = 1, label = labels$perc[2], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 2000, x = 2, label = labels$perc[5], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 1000, x = 2, label = labels$perc[6], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 305, x = 2, label = labels$perc[7], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 85, x = 2, label = labels$perc[8], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 3993, x = 1, label = 'n = 3993', color = "gray27", vjust = -0.3, size = 4.5, family ='serif') +
+  annotate("text", y = 2489, x = 2, label = 'n = 2489', color = "gray27", vjust = -0.3, size = 4.5, family ='serif') +
+  scale_fill_manual(values= wes_palette("GrandBudapest1", n = 4))  +
+  theme_bw(base_size = 13) + 
+  theme(text = element_text(family = "serif"), plot.title = element_text(hjust = 0.5))
+```
+
+```{r, fig.width=14, fig.height=5}
+# Outputs the graph of depression answers by a breakdown of loneliness
+plot_spacer() + p + plot_spacer()
+```
+
+Delving into the mental health indicators, the figure above suggests an increase in loneliness can correlate with an  increase in depression. For instance, for teenagers who did not experience depression in the past week 81% did  not experience loneliness either. In contrast, for those respondents who felt depression during the past week only  37% did not experience loneliness (for both dimensions there are sufficient responses to support the robustness  of the conclusion).
+
+### Health Measure and Life Style (Part A)
+
+```{r, results='hide'}
+# Calculates and graphs depression given physical activity
+labels <- data %>%
+  filter(!is.na(`Weekly Break a Sweat`), !is.na(`Last Week Felt Depressed`)) %>%
+  group_by(`Weekly Break a Sweat`, `Last Week Felt Depressed`) %>%
+  summarise(count = n()) %>% 
+  mutate(perc = case_when(`Weekly Break a Sweat` == '0. Never' ~ round(count/230,2),
+                          `Weekly Break a Sweat` == '1. 1 or 2 times' ~ round(count/956,2),
+                          `Weekly Break a Sweat` == '2. 3 or 5 times' ~ round(count/1361,2),
+                          `Weekly Break a Sweat` == '3. 6 or 7 times' ~ round(count/731,2),
+                          `Weekly Break a Sweat` == '4. 7 or more times' ~ round(count/1026,2)),
+         perc=scales::percent(perc))
+
+p1 <- data %>% 
+  filter(!is.na(`Weekly Break a Sweat`), !is.na(`Last Week Felt Depressed`)) %>%
+  ggplot(aes(x = `Weekly Break a Sweat`, fill = `Last Week Felt Depressed`)) +
+  geom_bar(position="fill", alpha = 1, show.legend = FALSE) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(y = '', x = 'Weekly Sweat from Work, Play, Exercise') +
+  ggtitle('Physical Activity') +
+  scale_x_discrete(labels = c("0. Never" = "Never",
+                             "1. 1 or 2 times" = "1-2 times",
+                             "2. 3 or 5 times" = "3-5 times",
+                             "3. 6 or 7 times" = "6-7 times",
+                             "4. 7 or more times" = "7+ times")) +
+  annotate("text", y = 0.75, x = 1, label = labels$perc[1], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.25, x = 1, label = labels$perc[2], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.70, x = 2, label = labels$perc[3], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.23, x = 2, label = labels$perc[4], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.65, x = 3, label = labels$perc[5], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.21, x = 3, label = labels$perc[6], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.60, x = 4, label = labels$perc[7], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.19, x = 4, label = labels$perc[8], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.55, x = 5, label = labels$perc[9], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.17, x = 5, label = labels$perc[10], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 1, x = 1, label = 'n = 230', color = "gray27", vjust = -0.3, size = 4.3, family ='serif') +
+  annotate("text", y = 1, x = 2, label = 'n = 956', color = "gray27", vjust = -0.3, size = 4.3, family ='serif') +
+  annotate("text", y = 1, x = 3, label = 'n = 1361', color = "gray27", vjust = -0.3, size = 4.3, family ='serif') +
+  annotate("text", y = 1, x = 4, label = 'n = 731', color = "gray27", vjust = -0.3, size = 4.3, family ='serif') +
+  annotate("text", y = 1, x = 5, label = 'n = 1026', color = "gray27", vjust = -0.3, size = 4.3, family ='serif') +
+  scale_fill_manual(values= wes_palette("GrandBudapest1", n = 4))  +
+  theme_bw(base_size = 13) + 
+  theme(text = element_text(family = "serif"), plot.title = element_text(hjust = 0.5))
+```
+
+```{r, results='hide'}
+# Calculates and graphs depression given trouble with other students
+labels <- data %>%
+  filter(!is.na(`Last Year Trouble Other Students`), !is.na(`Last Week Felt Depressed`)) %>%
+  group_by(`Last Year Trouble Other Students`, `Last Week Felt Depressed`) %>%
+  summarise(count = n()) %>% 
+  mutate(perc = case_when(`Last Year Trouble Other Students` == '0. Never' ~ round(count/2489,2),
+                          `Last Year Trouble Other Students` == '1. Just a few times' ~ round(count/2854,2),
+                          `Last Year Trouble Other Students` == '2. About once a week' ~ round(count/513,2),
+                          `Last Year Trouble Other Students` == '3. Almost every day' ~ round(count/295,2),
+                          `Last Year Trouble Other Students` == '4. Every day' ~ round(count/207,2)),
+         perc=scales::percent(perc))
+
+p2 <- data %>%
+  filter(!is.na(`Last Year Trouble Other Students`), !is.na(`Last Week Felt Depressed`)) %>%
+  ggplot(aes(x = `Last Year Trouble Other Students`, fill = `Last Week Felt Depressed`)) +
+  geom_bar(position="fill", alpha = 1, show.legend = FALSE) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(y = '', x = 'School Year: Trouble Getting Along with Other Students') +
+  ggtitle('Trouble Socializing') +
+  scale_x_discrete(labels = c("0. Never" = "Never",
+                             "1. Just a few times" = "Few times",
+                             "2. About once a week" = "Once a week",
+                             "3. Almost every day" = "Almost everyday",
+                             "4. Every day" = "Everyday"))  +
+  annotate("text", y = 0.60, x = 1, label = labels$perc[1], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.12, x = 1, label = labels$perc[2], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.65, x = 2, label = labels$perc[3], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.15, x = 2, label = labels$perc[4], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.70, x = 3, label = labels$perc[5], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.20, x = 3, label = labels$perc[6], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.70, x = 4, label = labels$perc[7], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.20, x = 4, label = labels$perc[8], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.70, x = 5, label = labels$perc[9], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.20, x = 5, label = labels$perc[10], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 1, x = 1, label = 'n = 2489', color = "gray27", vjust = -0.3, size = 4.3, family ='serif') +
+  annotate("text", y = 1, x = 2, label = 'n = 2854', color = "gray27", vjust = -0.3, size = 4.3, family ='serif') +
+  annotate("text", y = 1, x = 3, label = 'n = 513', color = "gray27", vjust = -0.3, size = 4.3, family ='serif') +
+  annotate("text", y = 1, x = 4, label = 'n = 295', color = "gray27", vjust = -0.3, size = 4.3, family ='serif') +
+  annotate("text", y = 1, x = 5, label = 'n = 207', color = "gray27", vjust = -0.3, size = 4.3, family ='serif') +
+  scale_fill_manual(values= wes_palette("GrandBudapest1", n = 4))  +
+  theme_bw(base_size = 13) +
+  theme(text = element_text(family = "serif"), plot.title = element_text(hjust = 0.5))
+```
+
+```{r, results='hide'}
+# Calculates and graphs depression given trouble getting homework done
+labels <- data %>%
+  filter(!is.na(`Last Year Trouble HW`), !is.na(`Last Week Felt Depressed`)) %>%
+  group_by(`Last Year Trouble HW`, `Last Week Felt Depressed`) %>%
+  summarise(count = n()) %>% 
+  mutate(perc = case_when(`Last Year Trouble HW` == '0. Never' ~ round(count/1886,2),
+                          `Last Year Trouble HW` == '1. Just a few times' ~ round(count/2631,2),
+                          `Last Year Trouble HW` == '2. About once a week' ~ round(count/1004,2),
+                          `Last Year Trouble HW` == '3. Almost every day' ~ round(count/579,2),
+                          `Last Year Trouble HW` == '4. Every day' ~ round(count/257,2)),
+         perc=scales::percent(perc))
+
+p3 <- data %>%
+  filter(!is.na(`Last Year Trouble HW`), !is.na(`Last Week Felt Depressed`)) %>%
+  ggplot(aes(x = `Last Year Trouble HW`, fill = `Last Week Felt Depressed`)) +
+  geom_bar(position="fill", alpha = 1) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(y = '', x = 'School Year: Trouble Getting Homework Done') +
+  ggtitle('Trouble with Academics') +
+  scale_x_discrete(labels = c("0. Never" = "Never",
+                             "1. Just a few times" = "Few times",
+                             "2. About once a week" = "Once a week",
+                             "3. Almost every day" = "Almost everyday",
+                             "4. Every day" = "Everyday")) +
+  annotate("text", y = 0.60, x = 1, label = labels$perc[1], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.12, x = 1, label = labels$perc[2], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.65, x = 2, label = labels$perc[3], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.15, x = 2, label = labels$perc[4], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.70, x = 3, label = labels$perc[5], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.20, x = 3, label = labels$perc[6], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.75, x = 4, label = labels$perc[7], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.20, x = 4, label = labels$perc[8], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.75, x = 5, label = labels$perc[9], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.20, x = 5, label = labels$perc[10], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 1, x = 1, label = 'n = 1886', color = "gray27", vjust = -0.3, size = 4.3, family ='serif') +
+  annotate("text", y = 1, x = 2, label = 'n = 2631', color = "gray27", vjust = -0.3, size = 4.3, family ='serif') +
+  annotate("text", y = 1, x = 3, label = 'n = 1004', color = "gray27", vjust = -0.3, size = 4.3, family ='serif') +
+  annotate("text", y = 1, x = 4, label = 'n = 579', color = "gray27", vjust = -0.3, size = 4.3, family ='serif') +
+  annotate("text", y = 1, x = 5, label = 'n = 257', color = "gray27", vjust = -0.3, size = 4.3, family ='serif') +
+  scale_fill_manual(values= wes_palette("GrandBudapest1", n = 4))  +
+  theme_bw(base_size = 13) +
+  theme(text = element_text(family = "serif"), plot.title = element_text(hjust = 0.5))
+```
+
+```{r, fig.width=16, fig.height=6}
+# Outputs the final graph for life style (Part A)
+final <- p1 + p2 + p3
+final + plot_annotation('Life Style Indicators (Part A) and Depression in Teenagers',
+                        theme = theme(plot.title = element_text(hjust = 0.45))) & 
+  theme(text = element_text('serif'),
+        plot.title = element_text(size = 20))
+```
+
+
+The figure above suggests that increased physical activity may be related to decreased levels of depression, with the minimum level of exercise registering 47% of affirmative responses against 33% for the maximum level. In addition, the figure appears to indicate that respondents who report recurrent trouble with other students are more likely to experience depression (everyday trouble stands at 56% depression rates, while no troubles stands at 30%). Thirdly, the visualization seems to imply that increased academic troubles translate into higher depression records (50% depression rate in respondents with everyday troubles versus 31% among those with no troubles). 
+
+Nonetheless, confirmation of these preliminary observations is subject to sample size. On the one hand, for the study of physical activity, each dimension has a sufficient and comparable size (except for the Never level, which is expected of healthy teenagers). On the other hand, for the study of socializing and academic troubles, the highest order levels contain comparatively small sample sizes. As a result, the trends visualised could be spurious, coincidental, or biased to the limited number of respondents. It is also valuable to note that the life style indicators depicted in the figure aboce are likely to be intercorrelated. For instance, a teenager who has trouble with other students is less likely to engage in after-school activities, which in turn could hinder physical activity. Moreover, these relationships can be further studied by controlling for gender and socioeconomic factors, which are applied and 
+discussed in the following section.
+
+### Health Measure and Life Style (Part B)
+
+```{r, results='hide'}
+# Calculates and graphs depression given access to alcohol
+labels <- data %>%
+  filter(!is.na(`Easy Access Alcohol at Home`), !is.na(`Last Week Felt Depressed`)) %>%
+  group_by(`Easy Access Alcohol at Home`, `Last Week Felt Depressed`) %>%
+  summarise(count = n()) %>%
+  mutate(perc = if_else(`Easy Access Alcohol at Home` == 'No', round(count/4622,2), round(count/1825,2)),
+         perc=scales::percent(perc))
+
+p1 <- data %>%
+  filter(!is.na(`Easy Access Alcohol at Home`), !is.na(`Last Week Felt Depressed`)) %>%
+  ggplot(aes(x = `Easy Access Alcohol at Home`, fill = `Last Week Felt Depressed`)) +
+  geom_bar(position="fill", alpha = 1, show.legend = FALSE) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(y = '', x = 'Easy Access to Alcohol at Home') +
+  ggtitle('Access to Alcohol') +
+  annotate("text", y = 0.70, x = 1, label = labels$perc[1], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.20, x = 1, label = labels$perc[2], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.75, x = 2, label = labels$perc[3], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.25, x = 2, label = labels$perc[4], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 1, x = 1, label = 'n = 4622', color = "gray27", vjust = -0.3, size = 4.5, family ='serif') +
+  annotate("text", y = 1, x = 2, label = 'n = 1825', color = "gray27", vjust = -0.3, size = 4.5, family ='serif') +
+  scale_fill_manual(values= wes_palette("GrandBudapest1", n = 4))  +
+  theme_bw(base_size = 13) +
+  theme(text = element_text(family = "serif"), plot.title = element_text(hjust = 0.5))
+```
+
+```{r, results='hide'}
+# Calculates and graphs depression given first age of drugs (other than marihuana and cocaine) consumption
+labels <- data %>%
+  filter(!is.na(`Age First Drugs`), !is.na(`Last Week Felt Depressed`)) %>%
+  group_by(`Age First Drugs`, `Last Week Felt Depressed`) %>%
+  summarise(count = n()) %>% 
+  mutate(perc = case_when(`Age First Drugs` == '0. Never' ~ round(count/5900,2),
+                          `Age First Drugs` == '1. Before 12 years old' ~ round(count/39,2),
+                          `Age First Drugs` == '2. After 12 years old' ~ round(count/460,2)),
+         perc=scales::percent(perc))
+
+p2 <- data %>%
+  filter(!is.na(`Age First Drugs`), !is.na(`Last Week Felt Depressed`)) %>%
+  ggplot(aes(x = `Age First Drugs`, fill = `Last Week Felt Depressed`)) +
+  geom_bar(position="fill", alpha = 1, show.legend = FALSE) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(y = '', x = 'Age at which First Tried Drugs', caption = 'Drugs excluding marihuana and cocaine') +
+  ggtitle('Ilegal Drugs Consumption') +
+  scale_x_discrete(labels = c("0. Never" = "Never",
+                             "1. Before 12 years old" = "Before 12 years old",
+                             "2. After 12 years old" = "After 12 years old")) +
+  annotate("text", y = 0.70, x = 1, label = labels$perc[1], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.20, x = 1, label = labels$perc[2], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.80, x = 2, label = labels$perc[3], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.30, x = 2, label = labels$perc[4], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.80, x = 3, label = labels$perc[5], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.30, x = 3, label = labels$perc[6], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 1, x = 1, label = 'n = 5900', color = "gray27", vjust = -0.3, size = 4.5, family ='serif') +
+  annotate("text", y = 1, x = 2, label = 'n = 39', color = "gray27", vjust = -0.3, size = 4.5, family ='serif') +
+  annotate("text", y = 1, x = 3, label = 'n = 460', color = "gray27", vjust = -0.3, size = 4.5, family ='serif') +
+  scale_fill_manual(values= wes_palette("GrandBudapest1", n = 4))  +
+  theme_bw(base_size = 13) +
+  theme(text = element_text(family = "serif"), plot.title = element_text(hjust = 0.5))
+```
+
+```{r, results='hide'}
+# Calculates and graphs depression given smoking habits
+labels <- data %>%
+  filter(!is.na(`Regular Smoker`), !is.na(`Last Week Felt Depressed`)) %>%
+  group_by(`Regular Smoker`, `Last Week Felt Depressed`) %>%
+  summarise(count = n()) %>%
+  mutate(perc = if_else(`Regular Smoker` == 'No', round(count/1479,2), round(count/1285,2)),
+         perc=scales::percent(perc))
+
+p3 <- data %>%
+  filter(!is.na(`Regular Smoker`), !is.na(`Last Week Felt Depressed`)) %>%
+  ggplot(aes(x = `Regular Smoker`, fill = `Last Week Felt Depressed`)) +
+  geom_bar(position="fill", alpha = 1) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(y = '', x = 'Regular Smoker') +
+  ggtitle('Smoking Habits') +
+  annotate("text", y = 0.70, x = 1, label = labels$perc[1], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.20, x = 1, label = labels$perc[2], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.75, x = 2, label = labels$perc[3], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.25, x = 2, label = labels$perc[4], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 1, x = 1, label = 'n = 1479', color = "gray27", vjust = -0.3, size = 4.5, family ='serif') +
+  annotate("text", y = 1, x = 2, label = 'n = 1285', color = "gray27", vjust = -0.3, size = 4.5, family ='serif') +
+  scale_fill_manual(values= wes_palette("GrandBudapest1", n = 4))  +
+  theme_bw(base_size = 13) +
+  theme(text = element_text(family = "serif"), plot.title = element_text(hjust = 0.5))
+```
+
+```{r, fig.width=14, fig.height=5}
+# Outputs the final graph for life style (Part B)
+final <- p1 + p2 + p3
+final + plot_annotation('Life Style Indicators (Part B) and Depression in Teenagers', theme = theme(plot.title = element_text(hjust = 0.45))) & 
+  theme(text = element_text('serif'),
+        plot.title = element_text(size = 14))
+```
+
+On the subject of Part B life style indicators, the figure above appears to indicate that alcohol, illegal drugs, and smoking are associated with depression. Nevertheless, it is important to take into consideration that these subjects can be sensitive to teenagers. Therefore, the self-reporting nature of the AdHealth data set may include significant bias prompted by the respondents’ tendency to lie/ minimize their answers. In relation, and as expected, dimensions as those concerning drug consumption have comparatively small sample sizes, which can distort the conclusions drawn.
+
+### Gender and Socieconomic factors
+
+```{r, results='hide'}
+# Calculates and graphs depression answers by gender
+
+labels <- data %>%
+  filter(!is.na(`Last Week Felt Depressed`), !is.na(`Gender`)) %>%
+  group_by(`Gender`, `Last Week Felt Depressed`) %>%
+  summarise(count = n()) %>%
+  mutate(perc = ifelse(`Gender` == 'Female', round(count/3347,2), round(count/3137,2)), perc=scales::percent(perc))
+
+p1 <- data %>%
+  filter(!is.na(`Last Week Felt Depressed`), !is.na(`Gender`)) %>%
+  ggplot(aes(x = `Gender`, fill = `Last Week Felt Depressed`)) +
+  geom_bar(position="dodge", alpha = 1, show.legend = FALSE) +
+  labs(y = '') +
+  ggtitle('Gender') +
+  annotate("text", y = 750, x = 0.77, label = labels$perc[1], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 750, x = 1.23, label = labels$perc[2], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 750, x = 1.77, label = labels$perc[3], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 750, x = 2.23, label = labels$perc[4], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 1855, x = 1, label = 'n = 3347', color = "gray27", vjust = -0.3, size = 4.5, family ='serif') +
+  annotate("text", y = 2150, x = 2, label = 'n = 3137', color = "gray27", vjust = -0.3, size = 4.5, family ='serif') +
+  scale_fill_manual(values= wes_palette("GrandBudapest1", n = 4)) +
+  theme_bw(base_size = 13) +
+  theme(text = element_text(family = "serif"), plot.title = element_text(hjust = 0.5))
+```
+
+```{r, results='hide'}
+# Calculates and graphs depression answers by school enrollment
+
+labels <- data %>%
+  filter(!is.na(`Last Week Felt Depressed`), !is.na(`Currently in School`)) %>%
+  group_by(`Currently in School`, `Last Week Felt Depressed`) %>%
+  summarise(count = n()) %>%
+  mutate(perc = ifelse(`Currently in School` == 'No', round(count/125,2), round(count/6359,2)), perc=scales::percent(perc))
+
+p2 <- data %>%
+  filter(!is.na(`Last Week Felt Depressed`), !is.na(`Currently in School`)) %>%
+  ggplot(aes(x = `Currently in School`, fill = `Last Week Felt Depressed`)) +
+  geom_bar(position="fill", alpha = 1, show.legend = FALSE) +
+  labs(y = '') +
+  ggtitle('Currently in School') +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values= wes_palette("GrandBudapest1", n = 4)) +
+  annotate("text", y = 0.75, x = 1, label = labels$perc[1], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.30, x = 1, label = labels$perc[2], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.60, x = 2, label = labels$perc[3], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.20, x = 2, label = labels$perc[4], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 1, x = 1, label = 'n = 125', color = "gray27", vjust = -0.3, size = 4.5, family ='serif') +
+  annotate("text", y = 1, x = 2, label = 'n = 6359', color = "gray27", vjust = -0.3, size = 4.5, family ='serif') +
+  theme_bw(base_size = 13) +
+  theme(text = element_text(family = "serif"), plot.title = element_text(hjust = 0.5))
+```
+
+```{r, results='hide'}
+# Calculates and graphs depression answers by unemployment in the household
+
+labels <- data %>%
+  filter(!is.na(`Last Week Felt Depressed`), !is.na(`Unemployment Compensation`)) %>%
+  group_by(`Unemployment Compensation`, `Last Week Felt Depressed`) %>%
+  summarise(count = n())  %>%
+  mutate(perc = ifelse(`Unemployment Compensation` == 'No', round(count/5282,2), round(count/277,2)),
+         perc=scales::percent(perc))
+
+p3 <- data %>%
+  filter(!is.na(`Last Week Felt Depressed`), !is.na(`Unemployment Compensation`)) %>%
+  ggplot(aes(x = `Unemployment Compensation`, fill = `Last Week Felt Depressed`)) +
+  geom_bar(position="fill", alpha = 1) +
+  labs(y = '') +
+  ggtitle('Unemployment in the Household') +
+  scale_y_continuous(labels = scales::percent) +
+  annotate("text", y = 0.65, x = 1, label = labels$perc[1], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.15, x = 1, label = labels$perc[2], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.70, x = 2, label = labels$perc[3], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 0.20, x = 2, label = labels$perc[4], color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 1, x = 1, label = 'n = 5282', color = "gray27", vjust = -0.3, size = 4.5, family ='serif') +
+  annotate("text", y = 1, x = 2, label = 'n = 277', color = "gray27", vjust = -0.3, size = 4.5, family ='serif') +
+  scale_fill_manual(values= wes_palette("GrandBudapest1", n = 4)) +
+  theme_bw(base_size = 13) +
+  theme(text = element_text(family = "serif"), plot.title = element_text(hjust = 0.5))
+```
+
+```{r, results='hide'}
+# Calculates and graphs depression answers by unemployment in the household
+p4 <- data %>%
+  filter(!is.na(`Last Week Felt Depressed`), !is.na(`Household Income`), `Household Income` <= 100) %>%
+  ggplot(aes(x = `Household Income`, y = `Last Week Felt Depressed`, fill = `Last Week Felt Depressed`)) +
+  geom_boxplot(aes(middle = mean(`Household Income`))) +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  labs(y = '') +
+  ggtitle('Household Income') +
+  annotate("text", y = 1.45, x = 40, label = 'Median', color = "gray27", size = 5.5, family ='serif') +
+  annotate("text", y = 2.45, x = 35, label = 'Median', color = "gray27", size = 5.5, family ='serif') +
+  annotate("text", y = 1.45, x = 24, label = 'Q1', color = "gray27", size = 5.5, family ='serif') +
+  annotate("text", y = 2.45, x = 19, label = 'Q1', color = "gray27", size = 5.5, family ='serif') +
+  annotate("text", y = 1.45, x = 58, label = 'Q3', color = "gray27", size = 5.5, family ='serif') +
+  annotate("text", y = 2.45, x = 54, label = 'Q3', color = "gray27", size = 5.5, family ='serif') +
+  annotate("text", y = 1.45, x = 100, label = '+1.5 IQR', color = "gray27", size = 5.5, family ='serif') +
+  annotate("text", y = 2.45, x = 100, label = '+1.5 IQR', color = "gray27", size = 5.5, family ='serif') +
+  annotate("text", y = 1.45, x = 0, label = '-1.5 IQR', color = "gray27", size = 5.5, family ='serif') +
+  annotate("text", y = 2.45, x = 0, label = '-1.5 IQR', color = "gray27", size = 5.5, family ='serif') +
+  annotate("text", y = 0.70, x = 54, label = 'n = 2921', color = "white", size = 5.5, family ='serif') +
+  annotate("text", y = 1.70, x = 50, label = 'n = 1782', color = "white", size = 5.5, family ='serif') +
+  scale_fill_manual(values= wes_palette("GrandBudapest1", n = 4)) +
+  theme_bw(base_size = 13) +
+  theme(text = element_text(family = "serif"), plot.title = element_text(hjust = 0.5), axis.text.y=element_blank(), axis.ticks.y=element_blank())
+```
+
+```{r, fig.width=14, fig.height=8}
+# Outputs the final graph for depression given gender and socioeconomic factor
+final <- (p1 + p2 + p3) /
+  p4
+final + plot_annotation('Gender, Socieconomic Factors and Depression in Teenagers', theme = theme(plot.title = element_text(hjust = 0.45))) & 
+  theme(text = element_text('serif'),
+        plot.title = element_text(size = 15))
+```
+
+
+Concerning gender and socioeconomic factors, the figure above suggests that depression is more common among female respondents, as well as those not attending school, or experiencing unemployment in their household. In addition, the figure also seems to indicate that respondents in wealthier households are less prone to depression. Firstly, regarding gender, this conclusion aligns with the gender differences encountered in the literature review. Secondly, for school enrollment and household unemployment it is reasonable to assume that the conclusions may be spurious or biased given the large disparity in sample sizes. Lastly, on household income, it is important to consider that this factor may be correlated with an array of indicators which inflate the results. For instance, a wealthy household is likely to provide quality education, after-school sports/activities, and a buoyant social life.
+
+### Depression in the context of Gender and Self-Esteem (in line with literature review)
+
+```{r}
+# Calculates and graphs depression answers by a breakdown of weight perception and gender
+labels <- data %>%
+  filter(!is.na(`Last Week Felt Depressed`), !is.na(`Gender`), !is.na(`Weight Perception`)) %>%
+  group_by(`Last Week Felt Depressed`, `Gender`, `Weight Perception`) %>%
+  summarise(count = n()) %>% 
+  mutate(perc = case_when(`Last Week Felt Depressed` == 'No' & `Gender` == 'Female' ~ round(count/1850,2),
+                          `Last Week Felt Depressed` == 'No' & `Gender` == 'Male' ~ round(count/2139,2),
+                          `Last Week Felt Depressed` == 'Yes' & `Gender` == 'Female' ~ round(count/1494,2),
+                          `Last Week Felt Depressed` == 'Yes' & `Gender` == 'Male' ~ round(count/995,2)),
+         perc=scales::percent(perc))
+labels
+
+p <- data %>% 
+  filter(!is.na(`Last Week Felt Depressed`), !is.na(`Gender`), !is.na(`Weight Perception`)) %>%
+  ggplot(aes(x = `Last Week Felt Depressed`, fill = `Weight Perception`)) +
+  geom_bar(position="fill", alpha = 1) +
+  facet_wrap(vars(`Gender`), nrow = 1) +
+  labs(y = '') +
+  scale_y_continuous(labels = scales::percent) +
+  ggtitle('Depression and Self-Esteem in Male and Female Teenagers') +
+  theme_bw(base_size = 13) + 
+  theme(text = element_text(family = "serif"), plot.title = element_text(hjust = 0.5)) +
+  scale_fill_manual(values = c(wes_palettes$GrandBudapest1[1:4], 'violetred4'))  
+```
+
+```{r, fig.width=14, fig.height=5}
+# Outputs the graph of depression answers by a breakdown of weight perception and gender
+plot_spacer() + p + plot_spacer()
+```
+
+
+The figure above depicts the relationship between depression and self-esteem (in the form of weight perception) by gender. The figure suggests that weight perception can be correlated with depression; in a form which is differentiated for Females and Males. For the former, depression cases exhibit a sharp decline for the neutral level – About the right weight, and a significant increase in Slightly overweight and Very overweight. For the latter, depression cases experience an smaller yet significant decline for the neutral level, with an additional increase in Slightly underweight (the sample size in all dimension is sufficient to support the robustness of the conclusions).
+
+# Model: Logistic Regression
+
+## Overview
+
+To achieve the objective outlined in the introduction, this report develops a logistic regression model to predict whether the respondent has experienced depression in the last week. The regression is based on the mental health and life style indicators outlined, while controlling for gender and socioeconomic factors.
+
+Overall, the final model allows for several interesting conclusions: (1) loneliness is a highly strong predictor of depression (even at the low level of feeling depressed sometimes). The regressor is likely to be a simultaneous symptom of depression which increases prediction power but does not serve as a necessary precursor to depression (i.e., low utility as a warning sign before onset). (2) Being able to enjoy life to the highest level is associated with a 56% decrease in the odds of depression (over never enjoying life, CET PAR). This regressor is expected to reflect healthy family and social relationships which foster a balanced state of mind. (3) A weight perception of slightly overweight is associated with a 32% increase in the odds of depression (over a about the right weight perception, CET PAR). Thus, confirming the findings of both the literature review and the exploratory data analysis which heavily weighted the effect of self-esteem measures.
+
+Furthermore, (4) Having trouble with other students at school is associated with 1.82 times (if about once a week) and 2.27 times (if every day) the odds of depression for never having trouble (CET PAR). This regressor, is expected to capture the effects of teenage social dynamics as bullying and peer-pressure. It is worth noting that the level almost every day (in-between about once a week and every day) is not statistically significant in the final model. Suggesting data capture issues, spurious correlation, or the fact that respondent may associate having certain degree of troubles with popularity/ being tough and as such inflate their results. (5) Being a regular smoker is associated with a 32% increase in the odds of depression versus not being a regular smoker (CET PAR). This variable is expected to capture certain unhealthy consumption habits, which are not otherwise obtainable given the self-reporting nature of the data. Concretely, although substance abuse is expected to have a high correlation with depression, it is also unlikely that respondents are completely honest about these habits. Yet, smoking – as a correlated proxy, is more likely to receive truthful answers. Lastly, (6) being a male is associated with a 40% decrease in the odds of depression versus being female (CET PAR). Although the gender differential is expected from literature and the EDA, the odds decrease is larger than anticipated. As such, it is estimated that gender can be highly correlated with specific mental health and life style indicators (as weight perception), which for the case of the present sample cause inflation of the results.
+
+## Data cleaning
+```{r}
+data <- data %>% 
+  filter(!is.na(`Currently in School`))
+```
+
+
+## Split the data in training, validation, and test sets
+```{r}
+# Splits the data set (60% training, 20% validation, and 20% test)
+split <- partition(data$`Last Week Felt Depressed`, p = c(train = 0.6, validation = 0.2, test = 0.2))
+
+train <- data[split$train, ]
+validation <- data[split$validation, ]
+test <- data[split$test, ]
+```
+
+## Model training section
+#### Mental Health Indicators
+```{r}
+# Trains model 1
+model_1 <- glm(`Last Week Felt Depressed` ~
+                 `Last Week Felt Lonely` + 
+                 `Last Week Enjoyed Life` +
+                 relevel(`Weight Perception`, "3. About the right weight") + 
+                 relevel(`Intelligence Perception`, "3. About average"),
+               data = train,
+               family = "binomial"(link = "logit"))
+
+summary(model_1)
+```
+
+#### Life Style Indicators
+```{r}
+# Trains model 2
+model_2 <- glm(`Last Week Felt Depressed` ~
+                 `Weekly Break a Sweat` + 
+                 `Last Year Trouble Other Students` +
+                 `Last Year Trouble HW` + 
+                 `Easy Access Alcohol at Home` +
+                 `Age First Drugs` +
+                 `Regular Smoker`,
+               data = train,
+               family = "binomial"(link = "logit"))
+
+summary(model_2)
+```
+
+#### Mental Health and Life Style Indicators
+
+```{r}
+# Trains model 3
+model_3 <- glm(`Last Week Felt Depressed` ~
+                 `Last Week Felt Lonely` + 
+                 `Last Week Enjoyed Life` +
+                 relevel(`Weight Perception`, "3. About the right weight") + 
+                 relevel(`Intelligence Perception`, "3. About average") +
+                 `Weekly Break a Sweat` + 
+                 `Last Year Trouble Other Students` +
+                 `Last Year Trouble HW` + 
+                 `Easy Access Alcohol at Home` +
+                 `Age First Drugs` +
+                 `Regular Smoker`,
+               data = train,
+               family = "binomial"(link = "logit"))
+
+summary(model_3)
+```
+
+```{r}
+# Trains model 4
+model_4 <- glm(`Last Week Felt Depressed` ~ 
+                 `Last Week Enjoyed Life` +
+                 relevel(`Weight Perception`, "3. About the right weight") +
+                 relevel(`Intelligence Perception`, "3. About average") + 
+                 `Last Year Trouble Other Students` +
+                 `Regular Smoker`,
+               data = train,
+               family = "binomial"(link = "logit"))
+
+summary(model_4)
+```
+
+```{r}
+# Trains model 5
+model_5 <- glm(`Last Week Felt Depressed` ~
+                 `Last Week Felt Lonely` + 
+                 `Last Week Enjoyed Life` +
+                 relevel(`Weight Perception`, "3. About the right weight") +
+                 relevel(`Intelligence Perception`, "3. About average") + 
+                 `Last Year Trouble Other Students` +
+                 `Regular Smoker`,
+               data = train,
+               family = "binomial"(link = "logit"))
+
+summary(model_5)
+```
+
+#### Mental Health and Life Style Indicators controlling for Gender and socioeconomic factors
+```{r}
+# Trains model 6
+model_6 <- glm(`Last Week Felt Depressed` ~
+                 `Last Week Felt Lonely` + 
+                 `Last Week Enjoyed Life` +
+                 relevel(`Weight Perception`, "3. About the right weight") +
+                 relevel(`Intelligence Perception`, "3. About average") + 
+                 `Last Year Trouble Other Students` +
+                 `Regular Smoker` +
+                 `Gender` +
+                 `Unemployment Compensation` +
+                 `Household Income`,
+               data = train,
+               family = "binomial"(link = "logit"))
+
+summary(model_6)
+```
+
+## Model validation section
+### Prediction
+
+The final model is used to predict whether the respondents of the Wave I – AdHealth survey have felt depression in the past week. In this context, the model achieves an accuracy of 74% and a sensitivity of 71%. Based on these results the final model is used to predict the outcomes of three new-data test scenarios: (1) expected depression, (2) no expected depression, (3) convoluted scenario. For details on the new data set used, refer to the attached file. The results were respectively (1) depressed, (2) not depressed, and (3) depressed. Given the characteristics of the input data, it is possible to identify the heavy weight of loneliness and gender on the results, which can lead to biased assessments of depression (for instance, a male who only begins to show the first signs of depression, is likely to be classified as not depressed, when compared to a female). This situation is particularly troublesome in the case of false negatives, which risk condition deterioration and additional complications
+
+#### Mental Health Indicators
+```{r}
+# Predicts validation data with model 1
+model_1_pred <- predict(model_1, validation, type = "response")
+
+# Applies a threshold cut to the predicted data (probabilities to binary variable): above 0.5 = Yes, otherwise No
+model_1_pred <- if_else(model_1_pred > 0.45, 'Yes', 'No')
+```
+
+#### Life Style Indicators
+```{r}
+# Predicts validation data with model 2
+model_2_pred <- predict(model_2, validation, type = "response")
+
+# Applies a threshold cut to the predicted data (probabilities to binary variable): above 0.5 = Yes, otherwise No
+model_2_pred <- if_else(model_2_pred > 0.45, 'Yes', 'No')
+```
+
+#### Mental Health and Life Style Indicators
+```{r}
+# Predicts validation data with model 3
+model_3_pred <- predict(model_3, validation, type = "response")
+
+# Applies a threshold cut to the predicted data (probabilities to binary variable): above 0.5 = Yes, otherwise No
+model_3_pred <- if_else(model_3_pred > 0.45, 'Yes', 'No')
+```
+
+```{r}
+# Predicts validation data with model 4
+model_4_pred <- predict(model_4, validation, type = "response")
+
+# Applies a threshold cut to the predicted data (probabilities to binary variable): above 0.5 = Yes, otherwise No
+model_4_pred <- if_else(model_4_pred > 0.45, 'Yes', 'No')
+```
+
+```{r}
+# Predicts validation data with model 5
+model_5_pred <- predict(model_5, validation, type = "response")
+
+# Applies a threshold cut to the predicted data (probabilities to binary variable): above 0.5 = Yes, otherwise No
+model_5_pred <- if_else(model_5_pred > 0.45, 'Yes', 'No')
+```
+
+#### Mental Health and Life Style Indicators controlling for Gender and socioeconomic factors
+```{r}
+# Predicts validation data with model 6
+model_6_pred <- predict(model_6, validation, type = "response")
+
+# Applies a threshold cut to the predicted data (probabilities to binary variable): above 0.5 = Yes, otherwise No
+model_6_pred <- if_else(model_6_pred > 0.45, 'Yes', 'No')
+```
+
+### Accuracy and sensitivity
+### Mental Health Indicators
+```{r}
+# Extracts the confusion matrix of model 1 predictions to calculate accuracy and sensitivity
+cm <- table(validation$`Last Week Felt Depressed`, model_1_pred)
+accuracy = 1 - ((cm[2] + cm[3]) / sum(cm))
+sensitivity = cm[4] / (cm[4] + cm[2])
+
+# Prints the results
+print(paste('Accuracy =', round(accuracy,2), ' and Sensitivity =', round(sensitivity,2)))
+```
+
+#### Lifestyle Indicators
+```{r}
+# Extracts the confusion matrix of model 2 predictions to calculate accuracy and sensitivity
+cm <- table(validation$`Last Week Felt Depressed`, model_2_pred)
+accuracy = 1 - ((cm[2] + cm[3]) / sum(cm))
+sensitivity = cm[4] / (cm[4] + cm[2])
+
+# Prints the results
+print(paste('Accuracy =', round(accuracy,2), ' and Sensitivity =', round(sensitivity,2)))
+```
+
+#### Mental Health and Life Style Indicators
+```{r}
+# Extracts the confusion matrix of model 3 predictions to calculate accuracy and sensitivity
+cm <- table(validation$`Last Week Felt Depressed`, model_3_pred)
+accuracy = 1 - ((cm[2] + cm[3]) / sum(cm))
+sensitivity = cm[4] / (cm[4] + cm[2])
+
+# Prints the results
+print(paste('Accuracy =', round(accuracy,2), ' and Sensitivity =', round(sensitivity,2)))
+```
+
+```{r}
+# Extracts the confusion matrix of model 4 predictions to calculate accuracy and sensitivity
+cm <- table(validation$`Last Week Felt Depressed`, model_4_pred)
+accuracy = 1 - ((cm[2] + cm[3]) / sum(cm))
+sensitivity = cm[4] / (cm[4] + cm[2])
+
+# Prints the results
+print(paste('Accuracy =', round(accuracy,2), ' and Sensitivity =', round(sensitivity,2)))
+```
+
+```{r}
+# Extracts the confusion matrix of model 5 predictions to calculate accuracy and sensitivity
+cm <- table(validation$`Last Week Felt Depressed`, model_5_pred)
+accuracy = 1 - ((cm[2] + cm[3]) / sum(cm))
+sensitivity = cm[4] / (cm[4] + cm[2])
+
+# Prints the results
+print(paste('Accuracy =', round(accuracy,2), ' and Sensitivity =', round(sensitivity,2)))
+```
+
+#### Mental Health and Life Style Indicators controlling for Gender and socioeconomic factors
+```{r}
+# Extracts the confusion matrix of model 6 predictions to calculate accuracy and sensitivity
+cm <- table(validation$`Last Week Felt Depressed`, model_6_pred)
+accuracy = 1 - ((cm[2] + cm[3]) / sum(cm))
+sensitivity = cm[4] / (cm[4] + cm[2])
+
+# Prints the results
+print(paste('Accuracy =', round(accuracy,2), ' and Sensitivity =', round(sensitivity,2)))
+```
+
+## Model Test
+```{r}
+# Re-trains the final model (model 6) on the train and validation dataset
+train_final <- rbind(train,validation)
+model_final <- glm(`Last Week Felt Depressed` ~
+                 `Last Week Felt Lonely` + 
+                 `Last Week Enjoyed Life` +
+                 relevel(`Weight Perception`, "3. About the right weight") +
+                 relevel(`Intelligence Perception`, "3. About average") + 
+                 `Last Year Trouble Other Students` +
+                 `Regular Smoker` +
+                 `Gender` +
+                 `Unemployment Compensation` +
+                 `Household Income`,
+               data = train_final,
+               family = "binomial"(link = "logit"))
+
+summary(model_final)
+```
+
+```{r}
+# Predicts test data with the final model
+model_final_pred <- predict(model_final, test, type = "response")
+
+# Applies a threshold cut to the predicted data (probabilities to binary variable): above 0.5 = Yes, otherwise No
+model_final_pred <- if_else(model_final_pred > 0.45, 'Yes', 'No')
+```
+
+```{r}
+# Tests the final model (model 6)
+cm <- table(test$`Last Week Felt Depressed`, model_final_pred)
+accuracy = 1 - ((cm[2] + cm[3]) / sum(cm))
+sensitivity = cm[4] / (cm[4] + cm[2])
+
+# Prints the results
+print(paste('Accuracy =', round(accuracy,2), ' and Sensitivity =', round(sensitivity,2)))
+```
+
+## New Data Predictions
+
+```{r}
+# Loads the new data inputs
+new_data <- read.csv("C:/Users/i.madiedo.soto/OneDrive - Accenture/Documents/SoD/Healthcare Analytics/Data/New Data.csv", header = TRUE, sep = ',')
+new_data <- as.data.frame(unclass(new_data), stringsAsFactors = TRUE)
+new_data <- new_data %>% 
+  rename('Last Week Felt Lonely' = Last.Week.Felt.Lonely,
+         'Last Week Enjoyed Life' = Last.Week.Enjoyed.Life,
+         'Weight Perception' = Weight.Perception,
+         'Intelligence Perception' = Intelligence.Perception,
+         'Last Year Trouble Other Students' = Last.Year.Trouble.Other.Students,
+         'Regular Smoker' = Regular.Smoker,
+         'Gender' = Gender,
+         'Unemployment Compensation' = Unemployment.Compensation,
+         'Household Income' = Household.Income)
+predictions <- predict(model_final, new_data, type = "response")
+predictions <- if_else(predictions > 0.45, 'Yes', 'No')
+predictions
+```
+
+# Limitations
+
+This study has a series of limitations which merit further research and analysis. Firstly, the youngest samples of the dataset (teenagers) correspond to the years 1994-1995 and as such represent a 28-year-old context. This can be problematic because habits, social queues, family structures, and overall behaviours evolve over time. Hence, a relevant indicator of depression in 1994 may no longer be relevant in 2022. Secondly, the self-reported nature of the AdHealth data presents two main challenges: (1) people may have motivations to lie in their responses, for example shame, embarrassment, or fear. This is particularly problematic with teenagers who may also be motivated by factors as peer-pressure, trying to fit in, being popular, and appearing cool. (2) given respondents, nor their parents, are expected to be medical professionals, health measure variables are not perfectly accurate and may reflect self-diagnosis and/or undiagnosed conditions. Thirdly, this study simplified the identification of depression cases to affirmative or negative. However, depression can cover a wider spectrum of degrees and characteristics which are not captured by a dichotomic variable. As a result, provided a set of unseen data, the model can produce a significant level of false negatives.
+
+Fourthly, given the nature of the AdHealth data the majority of available regressors are categorical, which limits the flexibility and extent of the analyses which can be performed on the data. While, similar to the previous point, oversimplify the complex nature both mental health and life style indicators. Fifthly, the proposed model is yet to investigate the interactions across and between variable categories, which are expected to be common life style influences mental health and vice versa. The study of interactions can further modify the existing association models associations and as such refine the quality of predictions. Lastly, this study aims to control for a set of gender and socioeconomic factors. Nonetheless, only gender appears to have a significant effect on modelling, which indicates a need to re-investigate the database and identify either better or new measures which account for context differences.
