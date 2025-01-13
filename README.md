@@ -1,7 +1,7 @@
 # The Study of Depression in Teenagers: How can mental health and lifestyle indicators support the identification of depression in teenagers? :woman_health_worker:
 
 ### :information_source: Data Source
-The present study leerages the public dataset from the National Longitudinal Study of Adolescent to Adult Health (Add Health), 1994-2018 [Public Use] (ICPSR 21600)
+The present study leverages the public dataset from the National Longitudinal Study of Adolescent to Adult Health (Add Health), 1994-2018 [Public Use] (ICPSR 21600)
 
 Harris, Kathleen Mullan, and Udry, J. Richard. National Longitudinal Study of Adolescent to Adult Health (Add Health), 1994-2018 [Public Use]. Carolina Population Center, University of North Carolina-Chapel Hill [distributor], Inter-university Consortium for Political and Social Research [distributor], 2022-08-09. https://doi.org/10.3886/ICPSR21600.v25
 
